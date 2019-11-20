@@ -1,0 +1,159 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.OleDb;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Excel = Microsoft.Office.Interop.Excel;
+using Syncfusion.XlsIO;
+using System.IO;
+using System.Web;
+using System.Configuration;
+
+
+namespace ConsoleApp1
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            string name1 = "Sheet1";
+            
+            
+            var file1Path = Console.ReadLine();
+            file1Path = file1Path.ToString();
+            string constr1 = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + @file1Path + "; Extended Properties = 'Excel 12.0;HDR=YES;IMEX=1;';";
+            OleDbConnection con1 = new OleDbConnection(constr1);
+            OleDbCommand oconn1 = new OleDbCommand("Select * From [" + name1 + "$]", con1);
+            con1.Open();
+            OleDbDataAdapter sda1 = new OleDbDataAdapter(oconn1);
+            DataTable data1 = new DataTable();
+            sda1.Fill(data1);
+            DataTable newDataTable = new DataTable();
+            DataTable newDataTable1 = new DataTable();
+            DataColumn column;
+            DataRow row;
+
+            foreach (DataColumn col in data2.Columns)
+            {
+                column = new DataColumn();
+                column.DataType = System.Type.GetType("System.String");
+                column.ColumnName = col.ColumnName;
+                column.ReadOnly = false;
+                column.Unique = false;
+                newDataTable1.Columns.Add(column);
+            }
+
+            var results = from table1 in data1.AsEnumerable()
+                          join table2 in data2.AsEnumerable() on (string)table1["Item"] equals (string)table2["Item"]
+                          select new
+                          {
+                              Company = (string)table2["Company"],
+                              Item = (string)table2["Item"],
+                              Qty = table2["Qty"],
+                              UnitPrice = table1["UnitPrice"],
+                          };
+
+
+            foreach (var item in results)
+            {
+                Console.WriteLine(String.Format("Company = {0}, Item = {1}, Qty = {2}, UnitPrice = {3}", item.Company, item.Item, item.Qty, item.UnitPrice));
+                row = newDataTable1.NewRow();
+                row["Company"] = item.Company;
+                row["Item"] = item.Item;
+                row["Qty"] = item.Qty;
+                row["UnitPrice"] = item.UnitPrice;
+                newDataTable1.Rows.Add(row);
+            }
+            //using (ExcelEngine excelEngine = new ExcelEngine())
+            //{
+            //    IApplication application = excelEngine.Excel;
+            //    application.DefaultVersion = ExcelVersion.Excel2016;
+            //    IWorkbook workbook = application.Workbooks.Create(1);
+            //    IWorksheet worksheet = workbook.Worksheets[0];
+            //    worksheet.ImportDataTable(newDataTable1, true, 1, 1);
+            //    worksheet.UsedRange.AutofitColumns();
+            //    workbook.SaveAs(@"E:\Kousik\Kousik\ConsoleApp1\Output.xlsx");
+
+            //}
+            
+            CreateExcel(newDataTable1, @"E:\Kousik\Kousik\ConsoleApp1\Output.xls");
+            var a = ConvertXLS_XLSX(@"E:\Kousik\Kousik\ConsoleApp1\Output.xls");
+            File.Delete(@"E:\Kousik\Kousik\ConsoleApp1\Output.xls");
+        }
+
+        public static string ConvertXLS_XLSX(string xlsFile)
+        {
+            var app = new Microsoft.Office.Interop.Excel.Application();
+            //var xlsFile = file.FullName;
+            var wb = app.Workbooks.Open(xlsFile);
+            var xlsxFile = xlsFile + "x";
+            wb.SaveAs(Filename: xlsxFile, FileFormat: Microsoft.Office.Interop.Excel.XlFileFormat.xlOpenXMLWorkbook);
+            wb.Close();
+            app.Quit();
+            return xlsxFile;
+        }
+        public static void CreateExcel(DataTable dt, string excelPath)
+        {
+            Excel.Application xlApp;
+            Excel.Workbook xlWorkBook;
+            Excel.Worksheet xlWorkSheet;
+            object misValue = System.Reflection.Missing.Value;
+
+            try
+            {
+                
+                xlApp = new Excel.Application();
+                xlWorkBook = xlApp.Workbooks.Add(misValue);
+                xlWorkSheet = (Excel.Worksheet)xlWorkBook.Worksheets.get_Item(1);
+               
+                for (int j = 0; j <= dt.Columns.Count - 1; j++)
+                {
+                    xlWorkSheet.Cells[1, j + 1] = dt.Columns[j].ToString();
+                }
+
+                for (int i = 0; i <= dt.Rows.Count - 1; i++)
+                {
+                    for (int j = 0; j <= dt.Columns.Count - 1; j++)
+                    {
+                        xlWorkSheet.Cells[i + 2, j + 1] = dt.Rows[i].ItemArray[j].ToString();
+                    }
+                }
+
+                xlWorkBook.SaveAs(excelPath, Excel.XlFileFormat.xlWorkbookNormal, misValue, misValue, misValue, misValue, Excel.XlSaveAsAccessMode.xlExclusive, misValue, misValue, misValue, misValue, misValue);
+                xlWorkBook.Close(true, misValue, misValue);
+                xlApp.Quit();
+
+                releaseObject(xlApp);
+                releaseObject(xlWorkBook);
+                releaseObject(xlWorkSheet);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+        private static void releaseObject(object obj)
+        {
+            try
+            {
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(obj);
+                obj = null;
+            }
+            catch
+            {
+                obj = null;
+            }
+            finally
+            {
+                GC.Collect();
+            }
+        } 
+
+
+    }
+}
+
